@@ -48,6 +48,8 @@ foreach applicable source to target font mapping
     foreach byte sequence to unicode mapping
         find source byte sequence in the applicable source font name and style
         replace with target unicode in the applicable target font name and style
+        change the text language to Hindi
+        change Paragraph Composer to Adobe World Ready
 
 reorder characters such as ि to bring them to their correct positions
 ```
