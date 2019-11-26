@@ -1,4 +1,4 @@
-﻿/***********************************************************************
+/***********************************************************************
 	Copyright 2019, AssisTech, Indian Institute of Technology, Delhi
 	This program is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -24,31 +24,31 @@ function main(mappings) {
 }
 
 function readMappings() {
-  // read the source font name to target font name mappings
-  var table = read_tsv(app.activeScript.path + "/fonts.tsv");
+	// read the source font name to target font name mappings
+	var table = read_tsv(app.activeScript.path + "/fonts.tsv");
 
-  // save the names of fonts used in document and sort them for fast lookups
-  var docFonts = [];
-  for (var i = 0; i < app.activeDocument.fonts.count(); i++)
-	  docFonts.push(app.activeDocument.fonts[i].fontFamily);
-  docFonts.sort(function(a, b) {return a.localeCompare(b);});
+	var filtered = table.filter(function(e) {
+		return matchingDocFonts(e[1], e[2]).length > 0;
+	});
+	// read the mapping from glyph code to Unicode
+	for (var i = 0; i < filtered.length; i++) {
+		var filename = filtered[i][0];
+		var firstname = filename.split('.')[0];
+		filtered[i][0] = read_tsv(app.activeScript.path + "/" + filename);
+	}
+	return filtered;
+}
 
-  var filtered = table.filter(function(e) {
-                                  for (var i = 0; i < docFonts.length; i++)
-                                    if (docFonts[i] == e[1])
-                                      return true;
-				    else if (docFonts[i].localeCompare(e[1]) > 0)
-				      return false;
+function matchingDocFonts(name, style) {
+	var docFonts = [];
 
-                                  return false;
-                            });
-  // read the mapping from glyph code to Unicode
-  for (var i = 0; i < filtered.length; i++) {
-    var filename = filtered[i][0];
-    var firstname = filename.split('.')[0];
-    filtered[i][0] = read_tsv(app.activeScript.path + "/" + filename);
-  }
-  return filtered;
+	// save the names of fonts used in document
+	for (var i = 0; i < app.activeDocument.fonts.count(); i++)
+		docFonts.push(app.activeDocument.fonts[i].fontFamily);
+
+	return docFonts.filter(function (f) {
+		return f.indexOf(name) == 0;
+	});		
 }
 
 // utility functions for lookup and filtering not available in ID javascript
@@ -68,14 +68,17 @@ function convert(map, srcFont, srcStyle, tgtFont, tgtStyle, scalingFactor, langu
 	function change() {
 		try {
 			app.findGrepPreferences = app.changeGrepPreferences = NothingEnum.NOTHING;
-			if (srcFont) app.findGrepPreferences.appliedFont = srcFont;
-			if (srcStyle) app.findGrepPreferences.fontStyle = srcStyle;
+			if (srcFont && srcStyle) { // when reordering there is no source font/style
+				var matches = matchingDocFonts(srcFont, srcStyle);
+				app.findGrepPreferences.appliedFont = matches[0]; // srcFont may have been a pattern
+				app.findGrepPreferences.fontStyle = srcStyle; // srcStyle cannot be a pattern because fontStyle is not always a valid property
+			}
 			app.findGrepPreferences.findWhat = map[j][0];
 
 			if (map[j][1]) { // don't set target attributes if there is no target. ID will take you back to source
 				if (tgtFont) app.changeGrepPreferences.appliedFont = tgtFont;
 				if (tgtStyle) app.changeGrepPreferences.fontStyle = tgtStyle;
-				//if (language) app.changeGrepPreferences.appliedLanguage = language;
+				if (language) app.changeGrepPreferences.appliedLanguage = language;
 				if (composer) app.changeGrepPreferences.composer = composer;
 				app.changeGrepPreferences.changeTo = map[j][1];
 			} else {
@@ -87,7 +90,9 @@ function convert(map, srcFont, srcStyle, tgtFont, tgtStyle, scalingFactor, langu
 			alert(srcFont + ", " + tgtFont + ", "  + map[j][0] + ", " + map[j][1] + ": " + e.message);
 		}
 	};
-
+	
+	// this can happen if we have already processed the font and a later pattern matches again
+	if (srcFont && srcStyle && matchingDocFonts(srcFont, srcStyle).length == 0) return ;
 	app.findChangeGrepOptions.includeFootnotes = true;
 	app.findChangeGrepOptions.includeHiddenLayers = true;
 	app.findChangeGrepOptions.includeLockedLayersForFind = true;
