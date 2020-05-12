@@ -64,13 +64,12 @@ function setupEssentials() {
 }
 
 // convert from a source font name/style to target font name/style using the map which is a 2-D array
-function convert(map, srcFont, srcStyle, tgtFont, tgtStyle, scalingFactor, language, composer) {
+function convert(map, srcFontPrefix, srcStyle, tgtFont, tgtStyle, scalingFactor, language, composer) {
 	function change() {
 		try {
 			app.findGrepPreferences = app.changeGrepPreferences = NothingEnum.NOTHING;
-			if (srcFont && srcStyle) { // when reordering there is no source font/style
-				var matches = matchingDocFonts(srcFont, srcStyle);
-				app.findGrepPreferences.appliedFont = matches[0]; // srcFont may have been a pattern
+			if (srcFontPrefix && srcStyle) { // when reordering there is no source font/style
+				app.findGrepPreferences.appliedFont = srcFont; // srcFont may have been a pattern
 				app.findGrepPreferences.fontStyle = srcStyle; // srcStyle cannot be a pattern because fontStyle is not always a valid property
 			}
 			app.findGrepPreferences.findWhat = map[j][0];
@@ -92,15 +91,27 @@ function convert(map, srcFont, srcStyle, tgtFont, tgtStyle, scalingFactor, langu
 	};
 	
 	// this can happen if we have already processed the font and a later pattern matches again
-	if (srcFont && srcStyle && matchingDocFonts(srcFont, srcStyle).length == 0) return ;
+	if (srcFontPrefix && srcStyle && matchingDocFonts(srcFontPrefix, srcStyle).length == 0) return ;
 	app.findChangeGrepOptions.includeFootnotes = true;
 	app.findChangeGrepOptions.includeHiddenLayers = true;
 	app.findChangeGrepOptions.includeLockedLayersForFind = true;
 	app.findChangeGrepOptions.includeLockedStoriesForFind = true;
 	app.findChangeGrepOptions.includeMasterPages = true;
 	app.findGrepPreferences = app.changeGrepPreferences = NothingEnum.NOTHING;
-	for (var j = 0; j < map.length; j++)
-		change();
+	var srcFont = srcFontPrefix;
+	if (srcFontPrefix && srcStyle) {
+		var matches = matchingDocFonts(srcFontPrefix, srcStyle);
+		for (var k = 0; k < matches.length; k++) {
+			var srcFont = matches[k];
+			for (var j = 0; j < map.length; j++) {		
+				change();
+			}
+		}	
+	} else {
+		for (var j = 0; j < map.length; j++) {		
+			change();
+		}
+	}
 }
 
 // read a file containing tab separated values and return it as a 2-d array
